@@ -98,7 +98,7 @@ def report_unlabeled_count(y):
     n_total = y.shape[0]
     n_labeled = np.sum(np.not_equal(y, -1))
     print(
-        f"\nData loaded: {n_labeled} of {n_total} ({100*n_labeled/n_total:0.1f}%) are labeled!"
+        f"Data loaded: {n_labeled} of {n_total} ({100*n_labeled/n_total:0.1f}%) are labeled!"
     )
 
 

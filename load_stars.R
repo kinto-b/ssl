@@ -29,6 +29,10 @@ stars <- stars |>
 # Remove extreme outliers
 stars <- stars |> filter(if_all(u:redshift, ~abs(.) < 10))
 
+# TODO: Remove this
+# While models are still in development, we'll work with a 1/10th of the data
+# to speed things along
+stars <- sample_n(stars, 10000)
 
 # Splits -----------------------------------------------------------------------
 
@@ -54,11 +58,11 @@ train_car <- lapply(
     bind_rows(!!!tr)
   }
 )
-names(train) <- unlabeled_proportions
+names(train_car) <- unlabeled_proportions
 
 # Write it out for modelling
 write.csv(dat$test, "data/stars/prepared-test.csv", row.names = FALSE)
 write.csv(dat$validate, "data/stars/prepared-validate.csv", row.names = FALSE)
-purrr::iwalk(train, \(x, p) write.csv(x, sprintf("data/stars/prepared-train-car-%s.csv", p), row.names = FALSE))
+purrr::iwalk(train_car, \(x, p) write.csv(x, sprintf("data/stars/prepared-train-car-%s.csv", p), row.names = FALSE))
 
 

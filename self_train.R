@@ -68,10 +68,11 @@ selftrain <- function(formula, model, predict_probs, predict_class, labeled, unl
 
 # Main -------------------------------------------------------------------------
 stars <- read.csv("data/stars/prepared-train-car-0.01.csv")
-stars_validate <- read.csv("data/stars/prepared-validate.csv")
 
 stars <- split(stars, is.na(stars$class))
 names(stars) <- c("labeled", "unlabeled")
+
+stars$validate <- read.csv("data/stars/prepared-validate.csv")
 
 # Try a self-training with a few different classifiers
 cat("\n\n# Multinomial classifier ------- \n")
@@ -80,7 +81,7 @@ selftrain(
   model = \(...) nnet::multinom(..., trace=FALSE),
   predict_probs = \(m, df) predict(m, type = "probs", newdata = df),
   predict_class = \(m, df) predict(m, newdata = df),
-  stars$labeled, stars$unlabeled, stars_validate
+  stars$labeled, stars$unlabeled, stars$validate
 )
 
 cat("\n\n# LDA classifier ------- \n")
