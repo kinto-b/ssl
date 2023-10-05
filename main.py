@@ -13,7 +13,7 @@ from pylib.network import get_model_toy_nn
 from pylib.ssl_models import BaseModel, PiModel, TemporalEnsembleModel
 
 
-def main(epochs, prop_unlabeled=0.9):
+def main(epochs, prop_labeled=0.1):
     """Train an SSL model"""
     logging.basicConfig(
         level=logging.INFO,
@@ -22,7 +22,8 @@ def main(epochs, prop_unlabeled=0.9):
     )
     logger = logging.getLogger(__name__)
 
-    train_ds, test_ds = load_stars(prop_unlabeled)
+    logger.info("Loading data...")
+    train_ds, test_ds = load_stars(prop_labeled)
     optimizer = tf.keras.optimizers.Adam()
 
     logger.info("Fitting supervised-only...")
@@ -44,4 +45,4 @@ def main(epochs, prop_unlabeled=0.9):
 if __name__ == "__main__":
     os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"  # FATAL
     logging.getLogger("tensorflow").setLevel(logging.FATAL)
-    main(epochs=10, prop_unlabeled=0.99)
+    main(epochs=10, prop_labeled=0.01)

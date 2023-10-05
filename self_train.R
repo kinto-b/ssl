@@ -67,14 +67,11 @@ selftrain <- function(formula, model, predict_probs, predict_class, labeled, unl
 
 
 # Main -------------------------------------------------------------------------
-set.seed(2023-10-05)
-stars <- read.csv("data/stars/prepared.csv")
+stars <- read.csv("data/stars/prepared-train-car-0.01.csv")
+stars_validate <- read.csv("data/stars/prepared-validate.csv")
 
-# Create labeled/unlabeled cuts
-labeled_idx <- sample(1:nrow(stars), 100)
-labeled <- stars[labeled_idx, ]
-unlabeled <- stars[-labeled_idx, ]
-unlabeled$class <- NA
+stars <- split(stars, is.na(stars$class))
+names(stars) <- c("labeled", "unlabeled")
 
 # Try a self-training with a few different classifiers
 cat("\n\n# Multinomial classifier ------- \n")
@@ -83,7 +80,7 @@ selftrain(
   model = \(...) nnet::multinom(..., trace=FALSE),
   predict_probs = \(m, df) predict(m, type = "probs", newdata = df),
   predict_class = \(m, df) predict(m, newdata = df),
-  labeled, unlabeled, stars
+  stars$labeled, stars$unlabeled, stars_validate
 )
 
 cat("\n\n# LDA classifier ------- \n")
@@ -92,7 +89,7 @@ selftrain(
   model = \(...) MASS::lda(...),
   predict_probs = \(m, df) predict(m, newdata = df)$posterior,
   predict_class = \(m, df) predict(m, newdata = df)$class,
-  labeled, unlabeled, stars
+  stars$labeled, stars$unlabeled, stars_validate
 )
 
 cat("\n\n# QDA classifier ------- \n")
@@ -101,7 +98,7 @@ selftrain(
   model = \(...) MASS::qda(...),
   predict_probs = \(m, df) predict(m, newdata = df)$posterior,
   predict_class = \(m, df) predict(m, newdata = df)$class,
-  labeled, unlabeled, stars
+  stars$labeled, stars$unlabeled, stars_validate
 )
 
 cat("\n\n# SVM classifier ------- \n")
@@ -109,8 +106,8 @@ selftrain(
   class~., 
   model = \(...) kernlab::ksvm(..., prob.model=TRUE),
   predict_probs = \(m, df) kernlab::predict(m, df, type="probabilities"),
-  predict_class = \(m, df) predict(m, newdata = df),
-  labeled, unlabeled, stars
+  predict_class = \(m, df) kernlab::predict(m, newdata = df),
+  stars$labeled, stars$unlabeled, stars_validate
 )
 
 
