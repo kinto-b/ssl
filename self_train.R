@@ -29,6 +29,12 @@ selftrain <- function(formula, model, predict_probs, predict_class, labeled, unl
   unlabeled[[lhs]] <- NA
   lvls <- levels(labeled[[lhs]])
   
+  cat(sprintf(
+    "Training on %d labeled and %d unlabeled...\n",
+    nrow(labeled),
+    nrow(unlabeled)
+  ))
+  
   epoch <- 1
   while (nrow(unlabeled)>1 && epoch <= epochs) {
     m <- model(formula, data=labeled)
@@ -55,7 +61,7 @@ selftrain <- function(formula, model, predict_probs, predict_class, labeled, unl
   }
   
   acc <- mean(predict_class(m, test) == test[[lhs]])
-  cat(sprintf("Final accuracy %0.1f (%+0.1f) \n", 100*acc, 100*(acc-acc0)))
+  cat(sprintf("Final accuracy %0.1f (%+0.1f).\n", 100*acc, 100*(acc-acc0)))
   
   invisible(list(
     model = m,
@@ -67,7 +73,8 @@ selftrain <- function(formula, model, predict_probs, predict_class, labeled, unl
 
 
 # Main -------------------------------------------------------------------------
-stars <- read.csv("data/stars/prepared-train-car-0.01.csv")
+set.seed(2023-10-06)
+stars <- read.csv("data/stars/prepared-train-car-0.001.csv")
 
 stars <- split(stars, is.na(stars$class))
 names(stars) <- c("labeled", "unlabeled")
@@ -90,7 +97,7 @@ selftrain(
   model = \(...) MASS::lda(...),
   predict_probs = \(m, df) predict(m, newdata = df)$posterior,
   predict_class = \(m, df) predict(m, newdata = df)$class,
-  stars$labeled, stars$unlabeled, stars_validate
+  stars$labeled, stars$unlabeled, stars$validate
 )
 
 cat("\n\n# QDA classifier ------- \n")
@@ -99,7 +106,7 @@ selftrain(
   model = \(...) MASS::qda(...),
   predict_probs = \(m, df) predict(m, newdata = df)$posterior,
   predict_class = \(m, df) predict(m, newdata = df)$class,
-  stars$labeled, stars$unlabeled, stars_validate
+  stars$labeled, stars$unlabeled, stars$validate
 )
 
 cat("\n\n# SVM classifier ------- \n")
@@ -108,7 +115,7 @@ selftrain(
   model = \(...) kernlab::ksvm(..., prob.model=TRUE),
   predict_probs = \(m, df) kernlab::predict(m, df, type="probabilities"),
   predict_class = \(m, df) kernlab::predict(m, newdata = df),
-  stars$labeled, stars$unlabeled, stars_validate
+  stars$labeled, stars$unlabeled, stars$validate
 )
 
 
