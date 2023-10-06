@@ -32,7 +32,7 @@ stars <- stars |> filter(if_all(u:redshift, ~abs(.) < 10))
 # TODO: Remove this
 # While models are still in development, we'll work with a 1/10th of the data
 # to speed things along
-stars <- sample_n(stars, 10000)
+# stars <- sample_n(stars, 10000)
 
 # Splits -----------------------------------------------------------------------
 
@@ -52,7 +52,7 @@ unlabeled_proportions <- c(0.001, 0.01, 0.1, 0.25)
 train_car <- lapply(
   unlabeled_proportions,
   function(p) {
-    tr <- split_proportion(stars, p)
+    tr <- split_proportion(dat$train, p)
     names(tr) <- c("labeled", "unlabeled")
     tr$unlabeled$class <- NA
     bind_rows(!!!tr)
