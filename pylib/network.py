@@ -6,6 +6,7 @@ import tensorflow as tf
 
 
 def get_model_toy_nn(in_shape, out_units):
+    """A very simple feed-forward NN"""
     model = tf.keras.models.Sequential(
         [
             tf.keras.layers.Input(in_shape),
