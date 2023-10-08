@@ -11,11 +11,11 @@ def get_model_toy_nn(in_shape, out_units):
         [
             tf.keras.layers.Input(in_shape),
             tf.keras.layers.Dense(128, activation="relu"),
-            tf.keras.layers.Dropout(0.25),
-            tf.keras.layers.Dense(64, activation="relu"),
             tf.keras.layers.Dropout(0.5),
-            tf.keras.layers.Dense(32, activation="relu"),
-            tf.keras.layers.Dropout(0.25),
+            # tf.keras.layers.Dense(64, activation="relu"),
+            # tf.keras.layers.Dropout(0.5),
+            # tf.keras.layers.Dense(32, activation="relu"),
+            # tf.keras.layers.Dropout(0.25),
             tf.keras.layers.Dense(out_units),
         ]
     )
