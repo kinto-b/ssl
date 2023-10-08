@@ -38,13 +38,13 @@ def main(epochs, prop_labeled=0.1):
     logger.info("Fitting pi model...")
     model_pi = get_model_toy_nn(in_shape, out_units)
     fit_pi = PiModel(model_pi, optimizer, epochs)
-    fit_pi.train(train_ds, test_ds, gamma=1 / 3, tau=epochs // 3)
+    fit_pi.train(train_ds, test_ds, gamma=10, tau=epochs // 3)
     model_pi.save(f"data/models/stars-{prop_labeled}-toy_nn-pi.keras")
 
     logger.info("Fitting temporal ensemble...")
     model_te = get_model_toy_nn(in_shape, out_units)
     fit_te = TemporalEnsembleModel(model_te, optimizer, epochs)
-    fit_te.train(train_ds, test_ds, alpha=0.5, gamma=1 / 3, tau=epochs // 3)
+    fit_te.train(train_ds, test_ds, alpha=0.5, gamma=10, tau=epochs // 3)
     model_te.save(f"data/models/stars-{prop_labeled}-toy_nn-te.keras")
 
 

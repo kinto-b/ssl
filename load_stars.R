@@ -21,13 +21,14 @@ stars <- stars |>
   as_tibble() |> 
   select(u:z, redshift, class)
 
+# Remove extreme outliers based on z-score
+stars <- stars |> 
+  filter(if_all(u:redshift, ~abs(. - mean(.))/sd(.) < 10))
+
 # Standardize and centre features
 stars <- stars |> 
   mutate(across(u:redshift, ~. - mean(.))) |> 
   mutate(across(u:redshift, ~. / sd(.))) 
-
-# Remove extreme outliers
-stars <- stars |> filter(if_all(u:redshift, ~abs(.) < 10))
 
 # TODO: Remove this
 # While models are still in development, we'll work with a 1/10th of the data
@@ -59,6 +60,17 @@ train_car <- lapply(
   }
 )
 names(train_car) <- unlabeled_proportions
+
+# We will up-sample the labeled data so we get equal sized labeled/unlabeled.
+train_car <- purrr::map(train_car, function(df) {
+  u <- df |> filter(is.na(class))
+  
+  l <- df |>
+    filter(!is.na(class)) |> 
+    sample_n(nrow(.env$u), replace = TRUE) 
+  
+  rbind(u, l)
+})
 
 # Write it out for modelling
 write.csv(dat$test, "data/stars/prepared-test.csv", row.names = FALSE)
