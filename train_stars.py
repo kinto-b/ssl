@@ -51,4 +51,4 @@ def main(epochs, prop_labeled=0.1):
 if __name__ == "__main__":
     os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"  # FATAL
     logging.getLogger("tensorflow").setLevel(logging.FATAL)
-    main(epochs=30, prop_labeled=0.001)
+    main(epochs=10, prop_labeled=0.01)

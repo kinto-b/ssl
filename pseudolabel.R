@@ -65,5 +65,16 @@ cotrain(
   epochs = 5
 )
 
-
+cat("\n\n# Co-training with SVM/QDA classifiers ------- \n")
+cotrain(
+  class~., 
+  model1 = \(...) kernlab::ksvm(..., prob.model=TRUE),
+  predict_probs1 = \(m, df) kernlab::predict(m, df, type="probabilities"),
+  
+  model2 = \(...) MASS::qda(...),
+  predict_probs2 = \(m, df) predict(m, newdata = df)$posterior,
+  
+  stars$labeled, stars$unlabeled, stars$validate,
+  epochs = 5
+)
 
