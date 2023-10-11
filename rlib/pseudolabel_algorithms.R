@@ -14,11 +14,23 @@
 #' @param test A data.frame to compute accuracy on
 #' @param alpha The psuedo-labelling probability cutoff. Unlabeled data will be
 #'   assigned to whatever class has probability greater than this value.
+#' @param n The psuedo-labelling probability cutoff. The most confident `n`
+#'   predictions for each class will be assigned to that class.
 #' @param epochs The maximum number of epochs to pseudo-label for.
 #'
 #' @return Invisibly, a list containing the final fitted model, the
 #'   pseudolabelled data and the remainders
-selftrain <- function(formula, model, predict_probs, labeled, unlabeled, test, alpha = 0.9, epochs = 10) {
+selftrain_alpha <- function(formula, model, predict_probs, labeled, unlabeled, test, alpha = 0.9, epochs = 10) {
+  psuedolabeler <- function(...) .pseudolabel_alpha(..., alpha = alpha)
+  .selftrain(formula, model, predict_probs, labeled, unlabeled, test, psuedolabeler, epochs)
+}
+
+selftrain_n <- function(formula, model, predict_probs, labeled, unlabeled, test, n, epochs = 10) {
+  psuedolabeler <- function(...) .pseudolabel_n(..., n = n)
+  .selftrain(formula, model, predict_probs, labeled, unlabeled, test, psuedolabeler, epochs)
+}
+
+.selftrain <- function(formula, model, predict_probs, labeled, unlabeled, test, .pseudolabeler, epochs = 10) {
   lhs <- as.character(formula)[2]
   data <- .prepare_data(formula, labeled, unlabeled, test)
   cat(sprintf(
@@ -30,7 +42,7 @@ selftrain <- function(formula, model, predict_probs, labeled, unlabeled, test, a
   epoch <- 1
   while (nrow(data$unlabeled)>1 && epoch <= epochs) {
     m <- model(formula, data=data$labeled)
-    data <- .pseudolabel(formula, m, data, predict_probs, alpha)
+    data <- .pseudolabeler(formula, m, data, predict_probs)
     
     if (epoch == 1) {
       acc0 <- .accuracy_selftrain(formula, m, predict_probs, data$test)
@@ -46,7 +58,8 @@ selftrain <- function(formula, model, predict_probs, labeled, unlabeled, test, a
   invisible(list(
     model = m,
     pseudolabeled = labeled,
-    remainder = unlabeled
+    remainder = unlabeled,
+    acc_diff = acc-acc0
   ))
 }
 
@@ -70,12 +83,51 @@ selftrain <- function(formula, model, predict_probs, labeled, unlabeled, test, a
 #'
 #' @return Invisibly, a list containing the final fitted models, the
 #'   pseudolabelled data and the remainders
-cotrain <- function(
+cotrain_alpha <- function(
     formula, 
     model1, predict_probs1, 
     model2, predict_probs2,
-    labeled, unlabeled, test, 
-    alpha = 0.9, epochs = 10
+    labeled, unlabeled, test,
+    alpha = 0.9,
+    epochs = 10
+) {
+  psuedolabeler <- function(...) .pseudolabel_alpha(..., alpha = alpha)
+  .cotrain(
+    formula, 
+    model1, predict_probs1, 
+    model2, predict_probs2,
+    labeled, unlabeled, test,
+    psuedolabeler,
+    epochs
+  )
+}
+
+cotrain_n <- function(
+    formula, 
+    model1, predict_probs1, 
+    model2, predict_probs2,
+    labeled, unlabeled, test,
+    n,
+    epochs = 10
+) {
+  psuedolabeler <- function(...) .pseudolabel_n(..., n = n)
+  .cotrain(
+    formula, 
+    model1, predict_probs1, 
+    model2, predict_probs2,
+    labeled, unlabeled, test,
+    psuedolabeler,
+    epochs
+  )
+}
+
+.cotrain <- function(
+    formula, 
+    model1, predict_probs1, 
+    model2, predict_probs2,
+    labeled, unlabeled, test,
+    .pseudolabeler,
+    epochs
 ) {
   lhs <- as.character(formula)[2]
 
@@ -92,8 +144,8 @@ cotrain <- function(
     m1 <- model1(formula, data=data1$labeled)
     m2 <- model2(formula, data=data2$labeled)
     
-    data1 <- .pseudolabel(formula, m2, data1, predict_probs2, alpha)
-    data2 <- .pseudolabel(formula, m1, data2, predict_probs1, alpha)
+    data1 <- .pseudolabeler(formula, m2, data1, predict_probs2)
+    data2 <- .pseudolabeler(formula, m1, data2, predict_probs1)
     
     if (epoch == 1) {
       acc0 <- .accuracy_cotrain(formula, m1, predict_probs1, m2, predict_probs2, data1$test)
@@ -117,7 +169,8 @@ cotrain <- function(
     pseudolabeled1 = data1$labeled,
     pseudolabeled2 = data2$labeled,
     remainder1 = data1$unlabeled,
-    remainder2 = data2$unlabeled
+    remainder2 = data2$unlabeled,
+    acc_diff = acc-acc0
   ))
 }
 
@@ -168,13 +221,31 @@ cotrain <- function(
   )
 }
 
-.pseudolabel <- function(formula, fit, data, predict_probs, alpha) {
+.pseudolabel_alpha <- function(formula, fit, data, predict_probs, alpha) {
   lhs <- as.character(formula)[2]
   lvls <- levels(data$labeled[[lhs]])
   
   pred <- predict_probs(fit, data$unlabeled) > alpha
   for (i in seq_along(lvls)) { 
     data$unlabeled[[lhs]][pred[,i]] <- lvls[i]
+  }
+  
+  still_unlabeled <- is.na(data$unlabeled[[lhs]])
+  data$labeled <- rbind(data$labeled, data$unlabeled[!still_unlabeled, ])
+  data$unlabeled <- data$unlabeled[still_unlabeled, ]
+  
+  data
+}
+
+.pseudolabel_n <- function(formula, fit, data, predict_probs, n) {
+  lhs <- as.character(formula)[2]
+  lvls <- levels(data$labeled[[lhs]])
+  
+  pred <- predict_probs(fit, data$unlabeled)
+  for (i in seq_along(lvls)) {
+    m <- min(n, nrow(pred))
+    idx <- order(pred[,i], decreasing = TRUE)[1:m]
+    data$unlabeled[[lhs]][idx] <- lvls[i]
   }
   
   still_unlabeled <- is.na(data$unlabeled[[lhs]])
