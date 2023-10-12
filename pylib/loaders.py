@@ -4,14 +4,32 @@ import tensorflow as tf
 from sklearn.model_selection import train_test_split
 
 
-def load_stars(prop_labeled=0.9, mechanism="car"):
+def load_stars(holdout, prop_labeled, mechanism="car"):
     """Load prepared stellar classification data"""
-    train = pd.read_csv(f"data/stars/prepared-train-{mechanism}-{prop_labeled:}.csv")
-    test = pd.read_csv("data/stars/prepared-validate.csv")
+    # Use holdout as test
+    train = [pd.read_csv(f"data/stars/prepared-fold{i}.csv") for i in range(1, 6)]
+    test = train[holdout - 1]
+    del train[holdout - 1]
+    train = pd.concat(train)
 
-    mapping = {pd.NA: -1, "GALAXY": 0, "STAR": 1, "QSO": 2}
+    # Convert class to numeric
+    mapping = {"GALAXY": 0, "STAR": 1, "QSO": 2}
     train["class"] = train["class"].replace(mapping)
     test["class"] = test["class"].replace(mapping)
+
+    # Remove labels
+    is_labeled = train[f"{mechanism}-{prop_labeled}"]
+    train.loc[np.logical_not(is_labeled), "class"] = -1
+    train = train.loc[:, "u":"class"]
+    test = test.loc[:, "u":"class"]
+
+    report_unlabeled_count(train["class"])
+
+    # Resample labeled data for the sake of efficiency
+    train_u = train.loc[np.logical_not(is_labeled), :]
+    train_l = train.loc[is_labeled, :]
+    train_l = train_l.sample(len(train_u), replace=True)
+    train = pd.concat([train_u, train_l])
 
     # Separate features and labels
     x_train = np.array(train.drop(columns=["class"]))
@@ -22,67 +40,6 @@ def load_stars(prop_labeled=0.9, mechanism="car"):
     # Labels need to be signed 32 bit int
     y_train = y_train.astype(np.int32)
     y_test = y_test.astype(np.int32)
-
-    return as_ssl_data(x_train, y_train, x_test, y_test, None)
-
-
-def load_mnist(prop_labeled=0.9):
-    """Load (Fashion) MNIST"""
-    # Get data
-    mnist = tf.keras.datasets.fashion_mnist
-    (x_train, y_train), (x_test, y_test) = mnist.load_data()
-    x_train, x_test = x_train / 255.0, x_test / 255.0
-
-    # Add 'channel'
-    x_train = x_train.reshape(x_train.shape[0], 28, 28, 1)
-    x_test = x_test.reshape(x_test.shape[0], 28, 28, 1)
-
-    # Labels need to be signed integers
-    y_train = y_train.astype(dtype=np.int32)
-    y_test = y_test.astype(dtype=np.int32)
-
-    # Original data is read only
-    y_train = y_train.copy()
-
-    return as_ssl_data(x_train, y_train, x_test, y_test, prop_labeled)
-
-
-def load_ham(prop_labeled=0.9, prop_test=0.1):
-    """Load a subset of the skin lesion data"""
-    df = pd.read_csv("data/ham/hmnist_28_28_RGB.csv")
-
-    # Focus on nv, mel and bkl for now
-    df = df[df["label"].isin([2, 4, 6])]
-    df["label"] = df["label"].replace({2: 0, 4: 1, 6: 2})
-
-    # Reshape
-    x = df.drop(columns=["label"])
-    x = np.array(x).reshape(-1, 28, 28, 3)
-    y = np.array(df["label"])
-
-    # Rescale
-    x = x / 255
-
-    # Labels need to be signed 32 bit int
-    y = y.astype(np.int32)
-
-    # Split
-    x_train, x_test, y_train, y_test = train_test_split(
-        x, y, test_size=prop_test, random_state=2023
-    )
-
-    return as_ssl_data(x_train, y_train, x_test, y_test, prop_labeled)
-
-
-def as_ssl_data(x_train, y_train, x_test, y_test, prop_labeled):
-    """
-    Convert matrices to tf datasets and make some data 'unlabeled' by replacing
-    labels with the sentinel value -1.
-    """
-    if prop_labeled is not None:
-        # Use -1 as an unlabeled sentinel value
-        y_train[np.random.uniform(0, 1, size=y_train.shape) > prop_labeled] = -1
-    report_unlabeled_count(y_train)
 
     # Create Datasets
     idx_train = tf.range(len(y_train))
@@ -104,7 +61,7 @@ def report_unlabeled_count(y):
 
 if __name__ == "__main__":
     # Test that loaders are working as expected
-    train, test = load_stars(0)
+    train, test = load_stars(1, 0.001)
     i = 0
     for x, y, idx in train:
         print(x)
