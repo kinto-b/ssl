@@ -4,9 +4,9 @@ import tensorflow as tf
 from sklearn.model_selection import train_test_split
 
 
-def load_stars(prop_labeled=0.9):
+def load_stars(prop_labeled=0.9, mechanism="car"):
     """Load prepared stellar classification data"""
-    train = pd.read_csv(f"data/stars/prepared-train-car-{prop_labeled:}.csv")
+    train = pd.read_csv(f"data/stars/prepared-train-{mechanism}-{prop_labeled:}.csv")
     test = pd.read_csv("data/stars/prepared-validate.csv")
 
     mapping = {pd.NA: -1, "GALAXY": 0, "STAR": 1, "QSO": 2}

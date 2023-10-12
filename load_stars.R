@@ -78,3 +78,52 @@ write.csv(dat$validate, "data/stars/prepared-validate.csv", row.names = FALSE)
 purrr::iwalk(train_car, \(x, p) write.csv(x, sprintf("data/stars/prepared-train-car-%s.csv", p), row.names = FALSE))
 
 
+# Entropy ----------------------------------------------------------------------
+# Ziyang has suggested sampling labeled data using entropy.
+
+# First we model the class probabilities
+m <- nnet::multinom(class~., dat$train)
+p <- predict(m, type = "probs")
+
+# Next we compute the case-level entropy
+p <- p + 1e-15 # Deal with predicted prob of zero
+e <- apply(p, 1, \(p) - sum(p * log(p)))
+boxplot(e)
+p[which.max(e), ]
+p[which.min(e), ]
+
+# Finally we sample with probability Pr(i in I) = logistic(e)
+entropy_sampling_prob <- list(
+  `0.25` = plogis(1.25*e-1.25),
+  `0.1`  = plogis(1.25*e-2.25),
+  `0.01` = plogis(1.25*e-4.75),
+  `0.001` = plogis(1.25*e-7)
+)
+
+train_ent <- lapply(
+  entropy_sampling_prob,
+  function(p) {
+    idx <- runif(length(e)) < p
+    df <- dat$train
+    df$class[!idx] <- NA
+    df
+  }
+)
+
+lapply(train_ent, \(df) df |> count(is.na(class)) |> mutate(p=100*n/sum(n))) |> 
+  print()
+
+# We will up-sample the labeled data so we get equal sized labeled/unlabeled.
+train_ent <- purrr::map(train_ent, function(df) {
+  u <- df |> filter(is.na(class))
+  
+  l <- df |>
+    filter(!is.na(class)) |> 
+    sample_n(nrow(.env$u), replace = TRUE) 
+  
+  rbind(u, l)
+})
+
+
+purrr::iwalk(train_ent, \(x, p) write.csv(x, sprintf("data/stars/prepared-train-ent-%s.csv", p), row.names = FALSE))
+

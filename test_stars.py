@@ -1,3 +1,7 @@
+"""
+Check model performance on the held-aside test set.
+"""
+
 import logging
 import os
 
