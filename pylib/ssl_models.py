@@ -166,7 +166,6 @@ class TemporalEnsembleModel(BaseModel):
 
         for epoch in range(self.epochs):
             self._reset_metrics()
-
             for features, labels, idx in train_batches:
                 idx = idx.numpy()
                 batch_teacher = tf.convert_to_tensor(logits_teacher[idx])

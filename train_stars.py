@@ -8,7 +8,7 @@ import os
 import tensorflow as tf
 
 from pylib.loaders import load_stars
-from pylib.network import get_model_toy_nn
+from pylib.network import get_model_nn_single_layer
 from pylib.ssl_models import BaseModel, PiModel, TemporalEnsembleModel
 
 
@@ -29,7 +29,7 @@ def main(epochs, fold, prop_labeled=0.1, mechanism="car"):
     optimizer = tf.keras.optimizers.Adam()
 
     logger.info("Fitting supervised-only...")
-    model_sl = get_model_toy_nn(in_shape, out_units)
+    model_sl = get_model_nn_single_layer(in_shape, out_units)
     fit_sl = BaseModel(model_sl, optimizer, epochs)
     fit_sl.train(train_ds, test_ds, gamma=10)
 
@@ -38,7 +38,7 @@ def main(epochs, fold, prop_labeled=0.1, mechanism="car"):
     )
 
     logger.info("Fitting pi model...")
-    model_pi = get_model_toy_nn(in_shape, out_units)
+    model_pi = get_model_nn_single_layer(in_shape, out_units)
     fit_pi = PiModel(model_pi, optimizer, epochs)
     fit_pi.train(train_ds, test_ds, gamma=10, tau=epochs // 3)
     model_pi.save(
@@ -46,7 +46,7 @@ def main(epochs, fold, prop_labeled=0.1, mechanism="car"):
     )
 
     logger.info("Fitting temporal ensemble...")
-    model_te = get_model_toy_nn(in_shape, out_units)
+    model_te = get_model_nn_single_layer(in_shape, out_units)
     fit_te = TemporalEnsembleModel(model_te, optimizer, epochs)
     fit_te.train(train_ds, test_ds, alpha=0.5, gamma=10, tau=epochs // 3)
     model_te.save(
@@ -61,7 +61,5 @@ if __name__ == "__main__":
     for m in ["car", "ent"]:
         for p in [0.001, 0.01, 0.1, 0.25]:
             for f in [1, 2, 3, 4, 5]:
-                if m == "car" and p == 0.001 and f < 3:
-                    continue  # Already finished these
-                print(f"{m} - {p} - Fold {f}...")
+                print(f"{m} - {p} - Fold {f} ---------------------------------")
                 main(10, f, p, m)

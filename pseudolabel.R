@@ -4,106 +4,115 @@ source("rlib/pseudolabel_algorithms.R")
 # Load -------------------------------------------------------------------------
 
 set.seed(2023-10-06)
-stars <- read.csv("data/stars/prepared-train-car-0.01.csv")
-
-stars <- split(stars, is.na(stars$class))
-names(stars) <- c("labeled", "unlabeled")
-
-stars$validate <- read.csv("data/stars/prepared-validate.csv")
+stars <- list.files("data/stars", "prepared-", full.names = TRUE) |> 
+  lapply(read.csv, check.names=FALSE)
 
 # Self-train -------------------------------------------------------------------
-# Try a self-training with a few different classifiers
+
+# Function for doing cross-validation
+selftrain_cv <- function(model, predict_probs) {
+  lapply(seq_along(stars), function(i) {
+    train <- do.call(rbind, stars[-i])
+    train <- split(train, train$`car-0.01`)
+    
+    test <- stars[[i]]
+    
+    cat("\n")
+    selftrain_alpha(
+      class~u+g+r+i+z, 
+      model,
+      predict_probs,
+      train[[2]], 
+      train[[1]], 
+      test
+    )
+  })
+}
+
 
 cat("\n\n# Self-training with multinomial classifier ------- \n")
-selftrain_alpha(
-  class~., 
+res <- selftrain_cv(
   model = \(...) nnet::multinom(..., trace=FALSE),
-  predict_probs = \(m, df) predict(m, type = "probs", newdata = df),
-  stars$labeled, stars$unlabeled, stars$validate
+  predict_probs = \(m, df) predict(m, type = "probs", newdata = df)
 )
+sapply(res, \(x) 100*x[["acc_diff"]]) |> mean() # Average accuracy change
 
-selftrain_n(
-  class~., 
-  model = \(...) nnet::multinom(..., trace=FALSE),
-  predict_probs = \(m, df) predict(m, type = "probs", newdata = df),
-  stars$labeled, stars$unlabeled, stars$validate,
-  n=1000
-)
-
-cat("\n\n# Self-training with LDA classifier ------- \n")
-selftrain(
-  class~., 
-  model = \(...) MASS::lda(...),
-  predict_probs = \(m, df) predict(m, newdata = df)$posterior,
-  stars$labeled, stars$unlabeled, stars$validate
-)
 
 cat("\n\n# Self-training with QDA classifier ------- \n")
-selftrain(
-  class~., 
+res <- selftrain_cv(
   model = \(...) MASS::qda(...),
-  predict_probs = \(m, df) predict(m, newdata = df)$posterior,
-  stars$labeled, stars$unlabeled, stars$validate
+  predict_probs = \(m, df) predict(m, newdata = df)$posterior
 )
+sapply(res, \(x) 100*x[["acc_diff"]]) |> mean() # Average accuracy change
+
 
 cat("\n\n# Self-training with naive bayes classifier ------- \n")
-selftrain(
-  class~., 
+res <- selftrain_cv(
   model = \(...) naivebayes::naive_bayes(...),
-  predict_probs = \(m, df) predict(m, newdata = df, type = "prob"),
-  stars$labeled, stars$unlabeled, stars$validate
+  predict_probs = \(m, df) predict(m, newdata = df, type = "prob")
 )
+sapply(res, \(x) 100*x[["acc_diff"]]) |> mean() # Average accuracy change
 
 # # SVM IS VERY SLOW! Commenting it out for now. It's similar to the others :/
 # cat("\n\n# Self-training with SVM classifier ------- \n")
-# selftrain(
-#   class~., 
+# res <- selftrain_cv(
 #   model = \(...) kernlab::ksvm(..., prob.model=TRUE),
-#   predict_probs = \(m, df) kernlab::predict(m, df, type="probabilities"),
-#   stars$labeled, stars$unlabeled, stars$validate
+#   predict_probs = \(m, df) kernlab::predict(m, df, type="probabilities")
 # )
+# sapply(res, \(x) 100*x[["acc_diff"]]) |> mean() # Average accuracy change
+
 
 
 # Co-train ---------------------------------------------------------------------
-# Try co-training with a few different pairs
+# Function for doing cross-validation
+cotrain_cv <- function(model1, predict_probs1, model2, predict_probs2) {
+  lapply(seq_along(stars), function(i) {
+    train <- do.call(rbind, stars[-i])
+    train <- split(train, train$`car-0.01`)
+    
+    test <- stars[[i]]
+    
+    cat("\n")
+    cotrain_alpha(
+      class~u+g+r+i+z, 
+      model1, predict_probs1, model2, predict_probs2,
+      train[[2]], 
+      train[[1]], 
+      test,
+      epochs = 5
+    )
+  })
+}
 
 cat("\n\n# Co-training with multinomial/QDA classifiers ------- \n")
-cotrain(
-  class~., 
+res <- cotrain_cv(
   model1 = \(...) nnet::multinom(..., trace=FALSE),
   predict_probs1 = \(m, df) predict(m, type = "probs", newdata = df),
   
   model2 = \(...) MASS::qda(...),
-  predict_probs2 = \(m, df) predict(m, newdata = df)$posterior,
-  
-  stars$labeled, stars$unlabeled, stars$validate,
-  epochs = 5
+  predict_probs2 = \(m, df) predict(m, newdata = df)$posterior
 )
+sapply(res, \(x) 100*x[["acc_diff"]]) |> mean() # Average accuracy change
+
 
 cat("\n\n# Co-training with LDA/QDA classifiers ------- \n")
-cotrain(
-  class~., 
+res <- cotrain_cv(
   model1 = \(...) MASS::lda(...),
   predict_probs1 = \(m, df) predict(m, newdata = df)$posterior,
   
   model2 = \(...) MASS::qda(...),
-  predict_probs2 = \(m, df) predict(m, newdata = df)$posterior,
-  
-  stars$labeled, stars$unlabeled, stars$validate,
-  epochs = 5
+  predict_probs2 = \(m, df) predict(m, newdata = df)$posterior
 )
+sapply(res, \(x) 100*x[["acc_diff"]]) |> mean() # Average accuracy change
 
 # # SVM IS VERY SLOW! Commenting it out for now. It's similar to the others :/
 # cat("\n\n# Co-training with SVM/QDA classifiers ------- \n")
-# cotrain(
-#   class~., 
+# cotrain_cv(
 #   model1 = \(...) kernlab::ksvm(..., prob.model=TRUE),
 #   predict_probs1 = \(m, df) kernlab::predict(m, df, type="probabilities"),
 #   
 #   model2 = \(...) MASS::qda(...),
-#   predict_probs2 = \(m, df) predict(m, newdata = df)$posterior,
+#   predict_probs2 = \(m, df) predict(m, newdata = df)$posterior
 #   
-#   stars$labeled, stars$unlabeled, stars$validate,
-#   epochs = 5
 # )
 

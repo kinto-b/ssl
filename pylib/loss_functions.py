@@ -15,7 +15,7 @@ def loss_supervised(labels, logits):
         logits,
         from_logits=True,
     )
-    return tf.reduce_mean(loss)
+    return tf.reduce_sum(loss)
 
 
 def loss_consistency(logits_student, logits_teacher, **kwargs):
@@ -28,7 +28,7 @@ def loss_consistency(logits_student, logits_teacher, **kwargs):
 
     weight = kwargs["gamma"] * consistency_weight(kwargs["epoch"], kwargs["tau"])
 
-    return weight * tf.reduce_mean(loss)
+    return weight * tf.reduce_sum(loss)
 
 
 def consistency_weight(epoch, tau):

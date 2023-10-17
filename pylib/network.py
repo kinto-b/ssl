@@ -5,16 +5,31 @@ A library of networks
 import tensorflow as tf
 
 
-def get_model_toy_nn(in_shape, out_units):
+def get_model_nn_single_layer(in_shape, out_units):
     """A very simple feed-forward NN"""
     model = tf.keras.models.Sequential(
         [
             tf.keras.layers.Input(in_shape),
+            tf.keras.layers.GaussianNoise(0.01),
             tf.keras.layers.Dense(128, activation="relu"),
             tf.keras.layers.Dropout(0.5),
-            # tf.keras.layers.Dense(64, activation="relu"),
+            tf.keras.layers.Dense(out_units),
+        ]
+    )
+    return model
+
+
+def get_model_nn_multi_layer(in_shape, out_units):
+    """A very simple feed-forward NN"""
+    model = tf.keras.models.Sequential(
+        [
+            tf.keras.layers.Input(in_shape),
+            tf.keras.layers.GaussianNoise(0.1),
+            tf.keras.layers.Dense(64, activation="relu"),
             # tf.keras.layers.Dropout(0.5),
-            # tf.keras.layers.Dense(32, activation="relu"),
+            tf.keras.layers.Dense(32, activation="relu"),
+            # tf.keras.layers.Dropout(0.25),
+            tf.keras.layers.Dense(16, activation="relu"),
             # tf.keras.layers.Dropout(0.25),
             tf.keras.layers.Dense(out_units),
         ]
@@ -26,13 +41,13 @@ def get_model_toy_cnn(in_shape, out_units):
     """A very simple CNN"""
     model = tf.keras.models.Sequential(
         [
-            tf.keras.layers.GaussianNoise(0.15),
+            tf.keras.layers.Input(in_shape),
+            # tf.keras.layers.GaussianNoise(0.01),
             tf.keras.layers.Conv2D(
                 filters=32,
                 kernel_size=(3, 3),
                 activation=tf.keras.layers.LeakyReLU(alpha=0.1),
                 kernel_initializer="he_uniform",
-                input_shape=in_shape,
             ),
             tf.keras.layers.MaxPool2D((2, 2)),
             tf.keras.layers.Dropout(0.25),
